@@ -8,14 +8,21 @@
 #include<bits/stdc++.h>
 #include<QElapsedTimer>
 #include <QDebug>
+#include<cmath>
+#include <utility>
+
 #define maxHt 1000
 #define maxVt 1000
 #define PI 180
-
 #define Delay delay(1)
 
 using namespace std;
+
 QVector<pair<int,int>> points;
+QVector<pair<int,int>> line_endpoints;
+QVector<QVector<pair<int,int>>> clippedPoints;
+QVector<pair<int,int>> window_points;
+
 bool axis_clicked=false;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -24,7 +31,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     ui->workArea->setMouseTracking(true);
     ui->workArea->installEventFilter(this);
-
     QPixmap canvas = ui->workArea->pixmap(Qt::ReturnByValue);
     if (canvas.isNull()) {
         canvas = QPixmap(ui->workArea->size());
@@ -53,8 +59,6 @@ void MainWindow::colorPoint(int x, int y, int r, int g, int b, int penwidth=1) {
     ui->workArea->setPixmap(canvas);
 }
 
-
-
 void MainWindow::markBox(int x,int y,int r,int g,int b)
 {
     int gridOffset = (ui->gridOffset->value()==0)?1:ui->gridOffset->value();
@@ -70,6 +74,7 @@ void MainWindow::markBox(int x,int y,int r,int g,int b)
     int calcY=centerY-Y*gridOffset-gridOffset/2.0;
     colorPoint(calcX,calcY,r,g,b,gridOffset);
 }
+
 void MainWindow::on_showAxis_clicked() {
     axis_clicked=true;
     int width = ui->workArea->width();
@@ -265,6 +270,8 @@ void MainWindow::on_draw_bressenheim_line_clicked()
     int x_coord2=points[1].first;
     int y_coord2=points[1].second;
     MainWindow::draw_bressenham_line(x_coord1,y_coord1,x_coord2,y_coord2,0,255,0);
+    line_endpoints.push_back({x_coord1,y_coord1});
+    line_endpoints.push_back({x_coord2,y_coord2});
     points.clear();
 }
 
@@ -489,55 +496,61 @@ void MainWindow::draw_bressenham_ellipse(int x_center,int y_center,int a,int b)
     ui->bressenham_ellipse_time->setText(QString::number(time/100000));
 }
 
-void MainWindow::flood_fill(int x,int y,int r,int g,int b,set<pair<int,int>> &st)
-{
+void MainWindow::flood_fill(int x, int y, int r, int g, int b,set<pair<int,int>> &st){
+    // Check bounds
     Delay;
-    plotPixel(x,y,r,g,b);
-    int del_x[]={1,0,-1,0};
-    int del_y[]={0,1,0,-1};
-    int diag_x[]={1,1,-1,-1};
-    int diag_y[]={1,-1,-1,1};
+
+    // Set the initial pixel to the fill color
+    plotPixel(x, y, r, g, b);
     st.insert({x,y});
-    for(int k=0;k<4;k++)
-    {
-        int newX=x+del_x[k],newY=y+del_y[k];
+    // Recursive flood fill implementation for 4-connected pixels
+    int del_x[] = {1, 0, -1, 0};
+    int del_y[] = {0, 1, 0, -1};
+
+    for (int k = 0; k < 4; k++) {
+        int newX = x + del_x[k];
+        int newY = y + del_y[k];
         bool f=false;
-        for(auto it:MainWindow::polygon_points)
+        if((newX==0 || newY==0) && axis_clicked)
         {
-            if(it.first==newX && it.second==newY)
-            {
-                f=true;
-                break;
-            }
+            f=true;
         }
-        if(f)continue;
+        if(f)
+        {
+            continue;
+        }
         if(st.find({newX,newY})==st.end())
         {
-            MainWindow::flood_fill(newX,newY,r,g,b,st);
+            flood_fill(newX,newY,r,g,b,st);
         }
     }
-    if(ui->checkBox->isChecked())
-    {
-        for(int k=0;k<4;k++)
-        {
-            int newX=x+diag_x[k],newY=y+diag_y[k];
+
+    // Optional 8-connected flood fill if the checkbox is checked
+    if (ui->checkBox->isChecked()) {
+        int diag_x[] = {1, 1, -1, -1};
+        int diag_y[] = {1, -1, -1, 1};
+
+        for (int k = 0; k < 4; k++) {
+            int newX = x + diag_x[k];
+            int newY = y + diag_y[k];
             bool f=false;
-            for(auto it:MainWindow::polygon_points)
+            if((newX==0 || newY==0) && axis_clicked)
             {
-                if(it.first==newX && it.second==newY)
-                {
-                    f=true;
-                    break;
-                }
+                f=true;
             }
-            if(f)continue;
+            if(f)
+            {
+                continue;
+            }
             if(st.find({newX,newY})==st.end())
             {
-                MainWindow::flood_fill(newX,newY,r,g,b,st);
+                flood_fill(newX,newY,r,g,b,st);
             }
         }
     }
 }
+
+
 void MainWindow::on_draw_bressenham_ellipse_clicked()
 {
     if(points.size()<1)return;
@@ -570,8 +583,6 @@ void MainWindow::on_redraw_shape_clicked()
 
 }
 
-
-
 void MainWindow::on_flood_fill_clicked()
 {
     if(points.size()==0)
@@ -579,7 +590,7 @@ void MainWindow::on_flood_fill_clicked()
         return;
     }
     int x=points[0].first,y=points[0].second;
-    set<pair<int,int>> st;
+    set<pair<int,int>> st(polygon_points.begin(),polygon_points.end());
     MainWindow::flood_fill(x,y,180,250,180,st);
     points.clear();
 }
@@ -681,35 +692,6 @@ void MainWindow::on_boundary_fill_clicked()
     points.clear();
 }
 
-bool MainWindow::is_inside(int x,int y)
-{
-    int n=vertices.size();
-    int count=0;
-    for(int i=0;i<n;i++)
-    {
-        int y1=vertices[i].second;
-        int y2=vertices[(i+1)%n].second;
-        int max_y=max(y1,y2),min_y=min(y1,y2);
-        if(y>=min_y && y<=max_y)
-        {
-            int x1=vertices[i].first;
-            int x2=vertices[(i+1)%n].first;
-            double m=0;
-            if(y1!=y2)
-            {
-                m=((double)y2-y1)/(x2-x1);
-                double x_intersect=x1+((double)y-y1)/m;
-                if(x_intersect>x)
-                {
-                    count++;
-                }
-            }
-        }
-    }
-    qDebug()<<x<<y<<count;
-    return count%2!=0;
-}
-
 void MainWindow::on_fill_by_scanline_clicked() {
     int y_max = INT_MIN, y_min = INT_MAX;
 
@@ -763,6 +745,9 @@ void MainWindow::on_fill_by_scanline_clicked() {
 void MainWindow::on_clear_canvas_clicked()
 {
     drawn_points.clear();
+    points.clear();
+    line_endpoints.clear();
+    vertices.clear();
     QPixmap canvas=ui->workArea->pixmap(Qt::ReturnByValue);
     canvas.fill(Qt::white);
     ui->workArea->setPixmap(canvas);
@@ -798,19 +783,22 @@ QVector<int> translate(QVector<int> &vec,int x,int y)
     return multiply(matrix,vec);
 }
 
-QVector<int> rotateBy(int theta,QVector<int> &v)
+QVector<int> rotateBy(int theta, QVector<int> &v)
 {
-    QVector<QVector<double>> matrix(v.size(),QVector<double>(v.size(),0));
-    matrix[v.size()-1][v.size()-1]=1;
-    double radian=((double)theta*3.14)/180;
-    matrix[0][0]=round(cos(radian));
-    matrix[0][1]=round(sin(radian));
-    matrix[1][0]=-round(sin(radian));
-    matrix[1][1]=round(cos(radian));
-    qDebug()<<theta<<radian<<matrix;
-    return multiply(matrix,v);
+    // Create a 2x2 rotation matrix for the angle theta
+    QVector<QVector<double>> matrix(3, QVector<double>(3, 0));
+    matrix[2][2] = 1;  // Homogeneous coordinate for 2D transformations
 
+    double radian = ((double)theta * M_PI) / 180.0;
+    matrix[0][0] = cos(radian);
+    matrix[0][1] = -sin(radian);
+    matrix[1][0] = sin(radian);
+    matrix[1][1] = cos(radian);
+
+    // Perform matrix multiplication
+    return multiply(matrix, v);
 }
+
 void MainWindow::on_translate_clicked()
 {
     int along_x=ui->along_x->value();
@@ -835,7 +823,6 @@ void MainWindow::on_translate_clicked()
     {
         drawn_points.insert(it);
     }
-
     MainWindow::on_redraw_shape_clicked();
 }
 
@@ -844,11 +831,13 @@ void MainWindow::on_rotate_clicked()
 {
     int theta=ui->angle->value();
     QVector<QVector<int>> temp;
-    for(auto it:drawn_points)
+    for(auto it:vertices)
     {
-        temp.push_back(it);
+        temp.push_back({it.first,it.second});
     }
+    vertices.clear();
     drawn_points.clear();
+    on_clear_canvas_clicked();
     for(int i=0;i<temp.size();i++)
     {
         QVector<int> v={temp[i][0],temp[i][1],1};
@@ -858,9 +847,13 @@ void MainWindow::on_rotate_clicked()
     }
     for(auto it:temp)
     {
-        drawn_points.insert(it);
+        vertices.push_back({it[0],it[1]});
     }
-    MainWindow::on_redraw_shape_clicked();
+    int n=vertices.size();
+    for(int i=0;i<n;i++)
+    {
+        draw_bressenham_line(vertices[i].first,vertices[i].second,vertices[(i+1)%n].first,vertices[(i+1)%n].second,0,255,0);
+    }
 }
 
 QVector<int> shear(float shear_x,float shear_y,QVector<int> &v)
@@ -883,7 +876,6 @@ void MainWindow::on_apply_shear_clicked()
     {
         temp.push_back(it);
     }
-    qDebug()<<temp;
     vertices.clear();
     for(int i=0;i<temp.size();i++)
     {
@@ -897,7 +889,6 @@ void MainWindow::on_apply_shear_clicked()
     }
     int n=vertices.size();
     MainWindow::on_clear_canvas_clicked();
-    qDebug()<<vertices;
     for(int i=0;i<n;i++)
     {
         int x1=vertices[i].first;
@@ -989,7 +980,6 @@ void MainWindow::on_scale_clicked()
     {
         temp.push_back(it);
     }
-    qDebug()<<temp;
     vertices.clear();
     for(int i=0;i<temp.size();i++)
     {
@@ -1003,7 +993,6 @@ void MainWindow::on_scale_clicked()
     }
     int n=vertices.size();
     MainWindow::on_clear_canvas_clicked();
-    qDebug()<<vertices;
     for(int i=0;i<n;i++)
     {
         int x1=vertices[i].first;
@@ -1011,5 +1000,430 @@ void MainWindow::on_scale_clicked()
         int y1=vertices[i].second;
         int y2=vertices[(i+1)%n].second;
         draw_bressenham_line(x1,y1,x2,y2,0,255,0);
+    }
+}
+
+enum OutCode { INSIDE = 0, LEFT = 1, RIGHT = 2, BOTTOM = 4, TOP = 8 };
+
+// Function to compute the outcode for a given point (x, y)
+OutCode computeOutCode(int x, int y, int x_min, int y_min, int x_max, int y_max) {
+    OutCode code = INSIDE;
+
+    if (x < x_min) code = static_cast<OutCode>(code | LEFT);
+    else if (x > x_max) code = static_cast<OutCode>(code | RIGHT);
+    if (y < y_min) code = static_cast<OutCode>(code | BOTTOM);
+    else if (y > y_max) code = static_cast<OutCode>(code | TOP);
+
+    return code;
+}
+
+// Main function to clip a line according to the Sutherland-Cohen algorithm
+void MainWindow::on_sutherlandcohenclip_clicked() {
+    int x1, y1, x2, y2; // The endpoints of the line to be clipped
+    int x_min, y_min, x_max, y_max; // The bounds of the clipping window
+
+    // Define your line endpoints and clipping window here (example values)
+    sort(line_endpoints.begin(),line_endpoints.end());
+    x1 = line_endpoints[0].first; y1 = line_endpoints[0].second;
+    x2 = line_endpoints[1].first; y2 = line_endpoints[1].second;
+    x_min =window_points[0].first; y_min = window_points[0].second;
+    x_max = window_points[1].first; y_max = window_points[1].second;
+    window_points.clear();
+    // Get the outcodes for the initial endpoints
+    qDebug()<<x_min<<y_min<<x_max<<y_max;
+    qDebug()<<x1<<y1<<x2<<y2;
+    on_clear_canvas_clicked();
+    draw_bressenham_line(x_min,y_min,x_max,y_min,0,255,0);
+    draw_bressenham_line(x_max,y_min,x_max,y_max,0,255,0);
+    draw_bressenham_line(x_max,y_max,x_min,y_max,0,255,0);
+    draw_bressenham_line(x_min,y_max,x_min,y_min,0,255,0);
+    for(auto it:clippedPoints)
+    {
+        int clipped_x1=it[0].first;
+        int clipped_y1=it[0].second;
+        int clipped_x2=it[1].first;
+        int clipped_y2=it[1].second;
+        draw_bressenham_line(clipped_x1,clipped_y1,clipped_x2,clipped_y2,0,255,0);
+    }
+    OutCode outcode1 = computeOutCode(x1, y1, x_min, y_min, x_max, y_max);
+    OutCode outcode2 = computeOutCode(x2, y2, x_min, y_min, x_max, y_max);
+
+    bool accept = false;
+
+    while (true) {
+        if (!(outcode1 | outcode2)) {
+            // Both endpoints are inside the rectangle
+            accept = true;
+            break;
+        } else if (outcode1 & outcode2) {
+            // Both endpoints share an outside zone, trivially reject
+            break;
+        } else {
+            // Calculate the line segment to clip from an outside point to an intersection with the clip edge
+            int x, y;
+
+            // Determine which endpoint is outside the clipping area
+            OutCode outcodeOut = outcode1 ? outcode1 : outcode2;
+
+            // Find intersection point with clip boundary
+            if (outcodeOut & TOP) { // Point is above the clip window
+                x = x1 + (x2 - x1) * (y_max - y1) / (y2 - y1);
+                y = y_max;
+            } else if (outcodeOut & BOTTOM) { // Point is below the clip window
+                x = x1 + (x2 - x1) * (y_min - y1) / (y2 - y1);
+                y = y_min;
+            } else if (outcodeOut & RIGHT) { // Point is to the right of clip window
+                y = y1 + (y2 - y1) * (x_max - x1) / (x2 - x1);
+                x = x_max;
+            } else if (outcodeOut & LEFT) { // Point is to the left of clip window
+                y = y1 + (y2 - y1) * (x_min - x1) / (x2 - x1);
+                x = x_min;
+            }
+
+            // Replace the outside point with the intersection point
+            // and update the outcode
+            if (outcodeOut == outcode1) {
+                x1 = x; y1 = y;
+                outcode1 = computeOutCode(x1, y1, x_min, y_min, x_max, y_max);
+            } else {
+                x2 = x; y2 = y;
+                outcode2 = computeOutCode(x2, y2, x_min, y_min, x_max, y_max);
+            }
+        }
+    }
+
+    // If accepted, draw the clipped line using Bresenham's line algorithm
+    if (accept) {
+        // You can set your color here for the clipped line
+        int r =0, g = 255, b = 0;
+        draw_bressenham_line(x1, y1, x2, y2, r, g, b); // Call your Bresenham function here
+        clippedPoints.push_back({{x1,y1},{x2,y2}});
+    }
+    points.clear();
+    line_endpoints.clear();
+}
+
+void MainWindow::on_rotate_about_point_clicked()
+{
+    if(points.size()==0)
+    {
+        return;
+    }
+    auto point=points.front();
+    points.clear();
+    int x=point.first,y=point.second;
+    QVector<QVector<int>> temp;
+    for(auto it:drawn_points)
+    {
+        temp.push_back(it);
+    }
+    drawn_points.clear();
+    for(int i=0;i<temp.size();i++)
+    {
+        QVector<int> v;
+        v.push_back(temp[i][0]);
+        v.push_back(temp[i][1]);
+        v.push_back(1);
+        QVector<int> v2=translate(v,-x,-y);
+        temp[i][0]=v2[0];
+        temp[i][1]=v2[1];
+    }
+    int theta=ui->angle->value();
+    for(int i=0;i<temp.size();i++)
+    {
+        QVector<int> v={temp[i][0],temp[i][1],1};
+        QVector<int> v2=rotateBy(theta,v);
+        temp[i][0]=v2[0];
+        temp[i][1]=v2[1];
+    }
+    for(int i=0;i<temp.size();i++)
+    {
+        QVector<int> v;
+        v.push_back(temp[i][0]);
+        v.push_back(temp[i][1]);
+        v.push_back(1);
+        QVector<int> v2=translate(v,x,y);
+        temp[i][0]=v2[0];
+        temp[i][1]=v2[1];
+    }
+    for(auto it:temp)
+    {
+        drawn_points.insert(it);
+    }
+    on_redraw_shape_clicked();
+}
+
+
+void MainWindow::on_shear_about_point_clicked()
+{
+    if(points.size()==0)
+    {
+        return;
+    }
+    auto point=points.front();
+    points.clear();
+    int x=point.first,y=point.second;
+    QVector<QVector<int>> temp;
+    drawn_points.clear();
+    for(int i=0;i<vertices.size();i++)
+    {
+        temp.push_back({vertices[i].first,vertices[i].second});
+    }
+    for(int i=0;i<temp.size();i++)
+    {
+        QVector<int> v;
+        v.push_back(temp[i][0]);
+        v.push_back(temp[i][1]);
+        v.push_back(1);
+        QVector<int> v2=translate(v,-x,-y);
+        temp[i][0]=v2[0];
+        temp[i][1]=v2[1];
+    }
+    float shear_x=ui->shear_x->value();
+    float shear_y=ui->shear_y->value();
+    vertices.clear();
+    for(int i=0;i<temp.size();i++)
+    {
+        QVector<int> v={temp[i][0],temp[i][1],1};
+        QVector<int> v2=shear(shear_x,shear_y,v);
+        temp[i]={v2[0],v2[1]};
+    }
+    for(int i=0;i<temp.size();i++)
+    {
+        QVector<int> v;
+        v.push_back(temp[i][0]);
+        v.push_back(temp[i][1]);
+        v.push_back(1);
+        QVector<int> v2=translate(v,x,y);
+        temp[i][0]=v2[0];
+        temp[i][1]=v2[1];
+    }
+    for(auto it:temp)
+    {
+        vertices.push_back({it[0],it[1]});
+    }
+    int n=vertices.size();
+    MainWindow::on_clear_canvas_clicked();
+    for(int i=0;i<n;i++)
+    {
+        int x1=vertices[i].first;
+        int x2=vertices[(i+1)%n].first;
+        int y1=vertices[i].second;
+        int y2=vertices[(i+1)%n].second;
+        draw_bressenham_line(x1,y1,x2,y2,0,255,0);
+    }
+}
+
+void MainWindow::on_scale_about_point_clicked()
+{
+    if(points.size()==0)return;
+    int x=points.front().first,y=points.front().second;
+    points.clear();
+    int scale_x=ui->scale_factor_x->value();
+    int scale_y=ui->scale_factor_y->value();
+    QVector<pair<int,int>> temp;
+    for(auto it:vertices)
+    {
+        temp.push_back(it);
+    }
+    vertices.clear();
+    for(int i=0;i<temp.size();i++)
+    {
+        QVector<int> v;
+        v.push_back(temp[i].first);
+        v.push_back(temp[i].second);
+        v.push_back(1);
+        QVector<int> v2=translate(v,-x,-y);
+        temp[i].first=v2[0];
+        temp[i].second=v2[1];
+    }
+    for(int i=0;i<temp.size();i++)
+    {
+        QVector<int> v={temp[i].first,temp[i].second,1};
+        QVector<int> v2=scale(scale_x,scale_y,v);
+        temp[i]={v2[0],v2[1]};
+    }
+    for(int i=0;i<temp.size();i++)
+    {
+        QVector<int> v;
+        v.push_back(temp[i].first);
+        v.push_back(temp[i].second);
+        v.push_back(1);
+        QVector<int> v2=translate(v,x,y);
+        temp[i].first=v2[0];
+        temp[i].second=v2[1];
+    }
+    for(auto it:temp)
+    {
+        vertices.push_back(it);
+    }
+    int n=vertices.size();
+    on_clear_canvas_clicked();
+    for(int i=0;i<n;i++)
+    {
+        int x1=vertices[i].first;
+        int x2=vertices[(i+1)%n].first;
+        int y1=vertices[i].second;
+        int y2=vertices[(i+1)%n].second;
+        draw_bressenham_line(x1,y1,x2,y2,0,255,0);
+    }
+}
+
+void MainWindow::on_reflect_about_line_clicked()
+{
+    int x1 = line_endpoints[0].first, y1 = line_endpoints[0].second;
+    int x2 = line_endpoints[1].first, y2 = line_endpoints[1].second;
+    qDebug() << "Line endpoints:" << x1 << y1 << x2 << y2;
+
+    // Step 1: Calculate translation to bring (x1, y1) to origin
+    int tx = -x1;
+    int ty = -y1;
+
+    // Step 2: Calculate rotation angle to align line with x-axis
+    double angle = atan2(y2 - y1, x2 - x1);  // angle in radians
+
+    QVector<QVector<int>> transformed_vertices;
+    for (auto &vertex : vertices) {
+        QVector<int> point = {vertex.first, vertex.second, 1};
+
+        // Step 3: Translate point
+        QVector<int> translated_point = translate(point, tx, ty);
+
+        // Step 4: Rotate point to align with x-axis
+        QVector<int> rotated_point = rotateBy(-angle * 180 / M_PI, translated_point);
+
+        // Step 5: Reflect across x-axis
+        QVector<int> reflected_point = x_reflect(rotated_point);
+
+        // Step 6: Reverse the rotation
+        QVector<int> rotated_back_point = rotateBy(angle * 180 / M_PI, reflected_point);
+
+        // Step 7: Reverse the translation
+        QVector<int> final_point = translate(rotated_back_point, -tx, -ty);
+
+        // Store transformed point
+        transformed_vertices.push_back({final_point[0], final_point[1]});
+    }
+
+    // Clear previous drawn points and vertices
+    drawn_points.clear();
+    vertices.clear();
+    on_clear_canvas_clicked();
+
+    // Draw the original line
+    draw_bressenham_line(x1, y1, x2, y2, 0, 255, 0);
+
+    // Update vertices with the reflected points
+    for (const auto &point : transformed_vertices) {
+        vertices.push_back({point[0], point[1]});
+    }
+
+    // Draw the reflected polygon
+    int n = vertices.size();
+    for (int i = 0; i < n; i++) {
+        draw_bressenham_line(vertices[i].first, vertices[i].second,
+                             vertices[(i + 1) % n].first, vertices[(i + 1) % n].second,
+                             0, 255, 0);
+    }
+}
+
+void MainWindow::on_make_window_clicked()
+{
+    if(points.size()<2)
+    {
+        return;
+    }
+    int x1=points[0].first,y1=points[0].second,x2=points[1].first,y2=points[1].second;
+    qDebug()<<x1<<y1<<x2<<y2;
+    points.clear();
+    int x_left=min(x1,x2),x_right=max(x1,x2),y_bottom=min(y1,y2),y_upper=max(y1,y2);
+    window_points.push_back({x_left,y_bottom});
+    window_points.push_back({x_right,y_upper});
+    draw_bressenham_line(x_left,y_bottom,x_right,y_bottom,0,255,0);
+    draw_bressenham_line(x_right,y_bottom,x_right,y_upper,0,255,0);
+    draw_bressenham_line(x_right,y_upper,x_left,y_upper,0,255,0);
+    draw_bressenham_line(x_left,y_upper,x_left,y_bottom,0,255,0);
+}
+
+// Helper function to find the intersection point of a line segment with a clipping boundary
+std::pair<int, int> intersect(const std::pair<int, int>& p1, const std::pair<int, int>& p2, int edge, int xmin, int ymin, int xmax, int ymax) {
+    int x, y;
+    if (edge == 0) {  // Left boundary
+        x = xmin;
+        y = p1.second + (p2.second - p1.second) * (xmin - p1.first) / (p2.first - p1.first);
+    } else if (edge == 1) {  // Right boundary
+        x = xmax;
+        y = p1.second + (p2.second - p1.second) * (xmax - p1.first) / (p2.first - p1.first);
+    } else if (edge == 2) {  // Bottom boundary
+        y = ymin;
+        x = p1.first + (p2.first - p1.first) * (ymin - p1.second) / (p2.second - p1.second);
+    } else if (edge == 3) {  // Top boundary
+        y = ymax;
+        x = p1.first + (p2.first - p1.first) * (ymax - p1.second) / (p2.second - p1.second);
+    }
+    return {x, y};
+}
+
+// Function to check if a point is inside the clipping boundary
+bool inside(const std::pair<int, int>& p, int edge, int xmin, int ymin, int xmax, int ymax) {
+    switch (edge) {
+    case 0: return p.first >= xmin;  // Left boundary
+    case 1: return p.first <= xmax;  // Right boundary
+    case 2: return p.second >= ymin;  // Bottom boundary
+    case 3: return p.second <= ymax;  // Top boundary
+    }
+    return false;
+}
+
+// Function to perform Sutherland-Hodgeman Polygon Clipping
+void MainWindow::on_sutherlandhodgemanclip_clicked() {
+    if (window_points.size() < 2) return;
+
+    int xmin = window_points[0].first;
+    int ymin = window_points[0].second;
+    int xmax = window_points[1].first;
+    int ymax = window_points[1].second;
+
+    QVector<pair<int,int>> final_vertices;
+
+    for (int edge = 0; edge < 4; ++edge) {
+        QVector<std::pair<int, int>> clippedPolygon;
+        int n = vertices.size();
+
+        for (int i = 0; i < n; ++i) {
+            std::pair<int, int> current = vertices[i];
+            std::pair<int, int> prev = vertices[(i + n - 1) % n];
+
+            bool currInside = inside(current, edge, xmin, ymin, xmax, ymax);
+            bool prevInside = inside(prev, edge, xmin, ymin, xmax, ymax);
+
+            if (currInside) {
+                if (!prevInside) {  // Entering the clipping boundary
+                    clippedPolygon.append(intersect(prev, current, edge, xmin, ymin, xmax, ymax));
+                }
+                clippedPolygon.append(current);  // Always add the current point if it's inside
+            } else if (prevInside) {  // Exiting the clipping boundary
+                clippedPolygon.append(intersect(prev, current, edge, xmin, ymin, xmax, ymax));
+            }
+        }
+        vertices = clippedPolygon;  // Update the vertices with the newly clipped polygon
+    }
+    final_vertices=vertices;
+
+    on_clear_canvas_clicked();
+    vertices=final_vertices;
+
+    draw_bressenham_line(xmin,ymin,xmax,ymin,0,255,0);
+    draw_bressenham_line(xmax,ymin,xmax,ymax,0,255,0);
+    draw_bressenham_line(xmax,ymax,xmin,ymax,0,255,0);
+    draw_bressenham_line(xmin,ymax,xmin,ymin,0,255,0);
+
+    // Draw the clipped polygon using Bresenham's line drawing function
+    for (int i = 0; i < vertices.size(); ++i) {
+        int x1 = vertices[i].first;
+        int y1 = vertices[i].second;
+        int x2 = vertices[(i + 1) % vertices.size()].first;
+        int y2 = vertices[(i + 1) % vertices.size()].second;
+        draw_bressenham_line(x1, y1, x2, y2, 255, 0, 0);  // Draw line with red color
     }
 }

@@ -104,7 +104,7 @@
    <widget class="QPushButton" name="gridlines">
     <property name="geometry">
      <rect>
-      <x>850</x>
+      <x>860</x>
       <y>70</y>
       <width>111</width>
       <height>29</height>
@@ -172,7 +172,7 @@
    <widget class="QPushButton" name="dda_line">
     <property name="geometry">
      <rect>
-      <x>960</x>
+      <x>980</x>
       <y>70</y>
       <width>111</width>
       <height>24</height>
@@ -185,7 +185,7 @@
    <widget class="QPushButton" name="draw_bressenheim_line">
     <property name="geometry">
      <rect>
-      <x>940</x>
+      <x>950</x>
       <y>110</y>
       <width>151</width>
       <height>24</height>
@@ -198,7 +198,7 @@
    <widget class="QPushButton" name="draw_polar_circle">
     <property name="geometry">
      <rect>
-      <x>940</x>
+      <x>950</x>
       <y>150</y>
       <width>121</width>
       <height>24</height>
@@ -667,7 +667,7 @@
    <widget class="QPushButton" name="xaxis_reflect">
     <property name="geometry">
      <rect>
-      <x>1090</x>
+      <x>1120</x>
       <y>110</y>
       <width>81</width>
       <height>24</height>
@@ -680,7 +680,7 @@
    <widget class="QPushButton" name="yaxis_reflect">
     <property name="geometry">
      <rect>
-      <x>1070</x>
+      <x>1090</x>
       <y>70</y>
       <width>81</width>
       <height>24</height>
@@ -753,6 +753,110 @@
     </property>
     <property name="text">
      <string>Scale</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="sutherlandcohenclip">
+    <property name="geometry">
+     <rect>
+      <x>1020</x>
+      <y>270</y>
+      <width>141</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Sutherland-cohen-clip</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="sutherlandhodgemanclip">
+    <property name="geometry">
+     <rect>
+      <x>1010</x>
+      <y>320</y>
+      <width>161</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Sutherland-hodgeman-clip</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="scale_about_point">
+    <property name="geometry">
+     <rect>
+      <x>1080</x>
+      <y>360</y>
+      <width>101</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Scale about point</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="rotate_about_point">
+    <property name="geometry">
+     <rect>
+      <x>1050</x>
+      <y>390</y>
+      <width>131</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Rotate about point</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="shear_about_point">
+    <property name="geometry">
+     <rect>
+      <x>1050</x>
+      <y>430</y>
+      <width>131</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Shear about point</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="translate_about_point">
+    <property name="geometry">
+     <rect>
+      <x>1090</x>
+      <y>460</y>
+      <width>121</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Translate about point</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="reflect_about_line">
+    <property name="geometry">
+     <rect>
+      <x>1090</x>
+      <y>490</y>
+      <width>101</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Reflect about line</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="make_window">
+    <property name="geometry">
+     <rect>
+      <x>1140</x>
+      <y>20</y>
+      <width>91</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>make window</string>
     </property>
    </widget>
   </widget>

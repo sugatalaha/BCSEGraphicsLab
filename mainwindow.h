@@ -60,13 +60,27 @@ private slots:
 
     void on_scale_clicked();
 
+    void on_sutherlandcohenclip_clicked();
+
+    void on_sutherlandhodgemanclip_clicked();
+
+    void on_rotate_about_point_clicked();
+
+    void on_shear_about_point_clicked();
+
+    void on_scale_about_point_clicked();
+
+    void on_reflect_about_line_clicked();
+
+    void on_make_window_clicked();
+
 private:
     Ui::MainWindow *ui;
     void colorPoint(int x,int y,int r,int g, int b, int penwidth);
     void delay(int ms);
     void markBox(int x,int y,int r,int g,int b);
     void draw_dda_line(int x1,int y1,int x2,int y2,int r,int g,int b);
-    void draw_bressenham_line(int x1,int x2,int y1,int y2,int r,int g,int b);
+    void draw_bressenham_line(int x1,int y1,int x2,int y2,int r,int g,int b);
     void draw_polar_circle(int centerx,int centery,int radius);
     void draw_bressenham_circle(int x_center,int y_center,int radius);
     void plotPixel(int x,int y,int r,int g,int b);
