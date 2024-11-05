@@ -1113,11 +1113,12 @@ void MainWindow::on_rotate_about_point_clicked()
     points.clear();
     int x=point.first,y=point.second;
     QVector<QVector<int>> temp;
-    for(auto it:drawn_points)
+    for(auto it:vertices)
     {
-        temp.push_back(it);
+        temp.push_back({it.first,it.second});
     }
-    drawn_points.clear();
+    on_clear_canvas_clicked();
+    plotPixel(x,y,0,0,255);
     for(int i=0;i<temp.size();i++)
     {
         QVector<int> v;
@@ -1148,9 +1149,13 @@ void MainWindow::on_rotate_about_point_clicked()
     }
     for(auto it:temp)
     {
-        drawn_points.insert(it);
+        vertices.push_back({it[0],it[1]});
     }
-    on_redraw_shape_clicked();
+    int n=vertices.size();
+    for(int i=0;i<n;i++)
+    {
+        draw_bressenham_line(vertices[i].first,vertices[i].second,vertices[(i+1)%n].first,vertices[(i+1)%n].second,0,255,0);
+    }
 }
 
 
